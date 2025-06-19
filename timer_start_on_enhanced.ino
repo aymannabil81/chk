@@ -897,7 +897,7 @@ void handleRoot() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نظام التحكم في البيئة الزراعية</title>
+  <title>مزرعه فراخ مومون</title>
   <style>
     :root {
       --primary: #4CAF50;
@@ -1085,7 +1085,7 @@ void handleRoot() {
 <body>
   <div class="container">
     <header>
-      <h1>نظام التحكم في البيئة الزراعية</h1>
+      <h1>مزرعه فراخ مومون</h1>
       <p>آخر تحديث: )=====");
   html += getTime();
   html += F(R"=====(</p>
