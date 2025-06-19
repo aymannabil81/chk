@@ -41,7 +41,7 @@ String getVentilationRemainingTime();
 String getVentilation2RemainingTime();
 String formatDuration(unsigned long seconds);
 
-// NEW: Humidity control (Relay5)
+// Humidity control (Relay5)
 void handleHumidityTimer();
 void handleHumidityTimerUpdate();
 String getHumidityRemainingTime();
@@ -69,7 +69,7 @@ String getHumidityRemainingTime();
 #define VENTILATION2_TIMER_OFF_ADDR 72
 #define CONTROL_MODE_VENTILATION2_ADDR 76
 
-// NEW: EEPROM addresses for Humidity Timer/Control
+// EEPROM addresses for Humidity Control
 #define HUMIDITY_CONTROL_MODE_ADDR 80
 #define HUMIDITY_TARGET_ADDR 84
 #define HUMIDITY_TIMER_ON_ADDR 88
@@ -81,7 +81,7 @@ ControlMode currentHeatingMode = CM_DISABLED;
 ControlMode currentCoolingMode = CM_DISABLED;
 ControlMode currentVentilationMode = CM_DISABLED;
 ControlMode currentVentilation2Mode = CM_DISABLED;
-ControlMode currentHumidityMode = CM_DISABLED; // NEW
+ControlMode currentHumidityMode = CM_DISABLED;
 
 // Relay definitions
 const int relayPins[] = {23, 22, 21, 19, 18, 17, 16, 27};
@@ -89,7 +89,7 @@ const int relayPins[] = {23, 22, 21, 19, 18, 17, 16, 27};
 #define COOLING_RELAY 1
 #define VENTILATION_RELAY 2
 #define VENTILATION2_RELAY 3
-#define HUMIDITY_RELAY 4 // Relay5 assigned for humidity
+#define HUMIDITY_RELAY 4 // Relay5 assigned for humidity control
 const int relayCount = 8;
 
 // Sensor pins
@@ -103,7 +103,7 @@ const int relayCount = 8;
 const int R1 = 10000;
 const float Vcc = 5.0;
 
-//ddns update
+// DDNS update
 #define DYNU_UPDATE_INTERVAL 300000 // 5 minutes
 const char* dynu_url = "https://api.dynu.com/nic/update?hostname=aymanfarm.kozow.com&password=c11324d0b6c4e88df7489c02164d28eb";
 
@@ -129,7 +129,7 @@ float tempDifference = 2.0;
 float currentTemp = 0;
 float humidity = 0;
 
-// NEW: Humidity control variables
+// Humidity control variables
 float humidityTarget = 60.0; // Default 60%
 unsigned long humidityOnDuration = 1800;
 unsigned long humidityOffDuration = 1800;
@@ -142,19 +142,19 @@ unsigned long lastDynuUpdate = 0;
 unsigned long heatingOnDuration = 1800;
 unsigned long heatingOffDuration = 1800;
 unsigned long heatingTimerStartTime = 0;
-bool isHeatingOn = true; // Always start ON
+bool isHeatingOn = true;
 unsigned long coolingOnDuration = 1800;
 unsigned long coolingOffDuration = 1800;
 unsigned long coolingTimerStartTime = 0;
-bool isCoolingOn = true; // Always start ON
+bool isCoolingOn = true;
 unsigned long ventilationOnDuration = 1800;
 unsigned long ventilationOffDuration = 1800;
 unsigned long ventilationTimerStartTime = 0;
-bool isVentilationOn = true; // Always start ON
+bool isVentilationOn = true;
 unsigned long ventilation2OnDuration = 1800;
 unsigned long ventilation2OffDuration = 1800;
 unsigned long ventilation2TimerStartTime = 0;
-bool isVentilation2On = true; // Always start ON
+bool isVentilation2On = true;
 
 // WiFi networks
 const int MAX_NETWORKS = 3;
@@ -183,22 +183,25 @@ void resetHeatingTimer() {
   heatingTimerStartTime = millis();
   if (relayAllowAuto[HEATING_RELAY]) digitalWrite(relayPins[HEATING_RELAY], LOW);
 }
+
 void resetCoolingTimer() {
   isCoolingOn = true;
   coolingTimerStartTime = millis();
   if (relayAllowAuto[COOLING_RELAY]) digitalWrite(relayPins[COOLING_RELAY], LOW);
 }
+
 void resetVentilationTimer() {
   isVentilationOn = true;
   ventilationTimerStartTime = millis();
   if (relayAllowAuto[VENTILATION_RELAY]) digitalWrite(relayPins[VENTILATION_RELAY], LOW);
 }
+
 void resetVentilation2Timer() {
   isVentilation2On = true;
   ventilation2TimerStartTime = millis();
   if (relayAllowAuto[VENTILATION2_RELAY]) digitalWrite(relayPins[VENTILATION2_RELAY], LOW);
 }
-// NEW: reset humidity timer
+
 void resetHumidityTimer() {
   isHumidityOn = true;
   humidityTimerStartTime = millis();
@@ -220,8 +223,6 @@ void setup() {
   EEPROM.get(MQ135_RZERO_ADDR, MQ135_RZERO);
   EEPROM.get(MQ135_R0_ADDR, MQ135_R0);
   EEPROM.get(VENTILATION2_TEMP_ADDR, ventilation2TempThreshold);
-
-  // NEW: Humidity settings
   EEPROM.get(HUMIDITY_TARGET_ADDR, humidityTarget);
   EEPROM.get(HUMIDITY_TIMER_ON_ADDR, humidityOnDuration);
   EEPROM.get(HUMIDITY_TIMER_OFF_ADDR, humidityOffDuration);
@@ -305,7 +306,7 @@ void setup() {
   server.on("/update_cooling_timer", HTTP_POST, handleCoolingTimerUpdate);
   server.on("/update_ventilation_timer", HTTP_POST, handleVentilationTimerUpdate);
   server.on("/update_ventilation2_timer", HTTP_POST, handleVentilation2TimerUpdate);
-  server.on("/update_humidity_timer", HTTP_POST, handleHumidityTimerUpdate); // NEW
+  server.on("/update_humidity_timer", HTTP_POST, handleHumidityTimerUpdate);
   server.on("/calibrate_mq135", handleCalibrateMQ135);
   server.on("/relay_auto", HTTP_POST, handleRelayAutoUpdate);
 
@@ -616,8 +617,6 @@ void handleVentilation2Timer() {
   }
 }
 
-// --------- NEW: Humidity Timer Logic (Relay5) -----------
-
 void handleHumidityTimer() {
   unsigned long currentTime = millis();
   unsigned long elapsedTime = (currentTime - humidityTimerStartTime) / 1000;
@@ -686,8 +685,6 @@ String getHumidityRemainingTime() {
   return String(buf) + (isHumidityOn ? F(" (تشغيل)") : F(" (إيقاف)"));
 }
 
-// --------- END Humidity Timer -----------
-
 void handleRelayAutoUpdate() {
   for (int i = 0; i < relayCount; i++) {
     String allowName = "allow_auto_" + String(i);
@@ -713,7 +710,7 @@ void loop() {
     handleCoolingTimer();
     handleVentilationTimer();
     handleVentilation2Timer();
-    handleHumidityTimer(); // NEW
+    handleHumidityTimer();
     checkAmmoniaLevel();
     lastTempRead = millis();
   }
@@ -887,9 +884,6 @@ String formatDuration(unsigned long seconds) {
   return String(buf);
 }
 
-// --- PAGE: handleRoot() ---
-// (No change except add Humidity Timer card below)
-
 void handleRoot() {
   float tempDS18 = ds18b20.getTempCByIndex(0);
   float tempNTC = readNTC();
@@ -897,115 +891,781 @@ void handleRoot() {
   float humidityVal = dht.readHumidity();
   float dhtTemp = dht.readTemperature();
 
-  // ... (the HTML code as above, with the following insert for Humidity Timer) ...
+  String html = F(R"=====(
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام التحكم في البيئة الزراعية</title>
+  <style>
+    :root {
+      --primary: #4CAF50;
+      --secondary: #2196F3;
+      --danger: #F44336;
+      --warning: #FFC107;
+      --dark: #333;
+      --light: #f5f5f5;
+      --text-lg: 1.2rem;
+      --text-md: 1rem;
+      --text-sm: 0.875rem;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: #f9f9f9;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #ddd;
+    }
+    h1 {
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      color: var(--primary);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+    .card-title i {
+      margin-left: 10px;
+      font-size: 1.5em;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: var(--text-md);
+    }
+    .time-segment {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .time-segment input {
+      flex: 1;
+      min-width: 0;
+    }
+    .time-segment span {
+      flex: 0 0 auto;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: var(--text-md);
+      text-decoration: none;
+      transition: background 0.3s;
+    }
+    .btn:hover {
+      background: #3d8b40;
+    }
+    .btn-heating {
+      background: var(--danger);
+    }
+    .btn-cooling {
+      background: var(--secondary);
+    }
+    .btn-ventilation {
+      background: var(--warning);
+      color: var(--dark);
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+    .radio-group {
+      margin-bottom: 15px;
+    }
+    .radio-option {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .radio-option input {
+      margin-left: 8px;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .status-card {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .status-card h3 {
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+    .status-card p {
+      margin-bottom: 5px;
+    }
+    .alert {
+      background: #fff3cd;
+      color: #856404;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      border-left: 5px solid #ffeeba;
+    }
+    .timer-status {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #eee;
+    }
+    .timer-status p {
+      margin-bottom: 8px;
+    }
+    .relay-control {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .relay-item {
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .relay-item label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    @media (max-width: 768px) {
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+      .relay-control {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>نظام التحكم في البيئة الزراعية</h1>
+      <p>آخر تحديث: )=====");
+  html += getTime();
+  html += F(R"=====(</p>
+    </header>
 
-  // ADD THIS SECTION right after the cards for heating/cooling/ventilation/ventilation2:
-  // ---- START HUMIDITY TIMER CARD HTML ----
-  String html = FPSTR(R"=====(...)====="); // ... rest of existing HTML before the timer cards
+    <div class="status-grid">
+      <div class="status-card">
+        <h3>درجة الحرارة</h3>
+        <p><strong>الحالية:</strong> )=====");
+  html += String(currentTemp, 1);
+  html += F(R"=====( °C</p>
+        <p><strong>DHT22:</strong> )=====");
+  html += String(dhtTemp, 1);
+  html += F(R"=====( °C</p>
+        <p><strong>DS18B20:</strong> )=====");
+  html += String(tempDS18, 1);
+  html += F(R"=====( °C</p>
+        <p><strong>NTC:</strong> )=====");
+  html += String(tempNTC, 1);
+  html += F(R"=====( °C</p>
+      </div>
 
-  // (insert after the other timer cards)
-  html += FPSTR(R"=====(
-      <div class="card">
-        <h2 class="card-title"><i>💧</i> التحكم في الرطوبة (Relay5)</h2>
-        <form action="/update_humidity_timer" method="post">
-          <div class="radio-group">
-            <div class="radio-option">
-              <input type="radio" id="humidity_mode_disabled" name="humidity_control_mode" value="0" )=====");
+      <div class="status-card">
+        <h3>الرطوبة والأمونيا</h3>
+        <p><strong>الرطوبة:</strong> )=====");
+  html += String(humidityVal, 1);
+  html += F(R"=====( %</p>
+        <p><strong>مستوى الأمونيا:</strong> )=====");
+  html += String(ammoniaLevel, 1);
+  html += F(R"=====( ppm</p>
+        <p><strong>حد الإنذار:</strong> )=====");
+  html += String(ammoniaThreshold, 1);
+  html += F(R"=====( ppm</p>
+        <p><strong>MQ135:</strong> )=====");
+  html += String(mq135, 1);
+  html += F(R"=====( ppm</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title"><i>🔥</i> التحكم في التدفئة (Relay1)</h2>
+      <form action="/update_heating_timer" method="post">
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="heating_mode_disabled" name="heating_control_mode" value="0" )=====");
+  html += (currentHeatingMode == CM_DISABLED) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="heating_mode_disabled">معطل (حسب الحرارة فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="heating_mode_manual" name="heating_control_mode" value="1" )=====");
+  html += (currentHeatingMode == CM_MANUAL) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="heating_mode_manual">يدوي (بالتايمر فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="heating_mode_temp" name="heating_control_mode" value="2" )=====");
+  html += (currentHeatingMode == CM_TEMPERATURE) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="heating_mode_temp">تلقائي (حسب الحرارة والتايمر)</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="heating_target">درجة الحرارة المطلوبة (°C):</label>
+          <input type="number" id="heating_target" name="heating_target" value=")=====");
+  html += String(heatingTargetTemp, 1);
+  html += F(R"=====(" step="0.1" min="-10" max="50" required>
+        </div>
+        <h3 style="font-size: var(--text-lg); margin: 0.5rem 0">إعدادات التايمر</h3>
+        <div class="form-group">
+          <label>زمن التشغيل:</label>
+          <div class="time-segment">
+            <input type="number" id="heating_on_days" name="heating_on_days" value=")=====");
+  html += String(heatingOnDuration / 86400);
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="heating_on_hours" name="heating_on_hours" value=")=====");
+  html += String((heatingOnDuration % 86400) / 3600);
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="heating_on_minutes" name="heating_on_minutes" value=")=====");
+  html += String((heatingOnDuration % 3600) / 60);
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="heating_on_seconds" name="heating_on_seconds" value=")=====");
+  html += String(heatingOnDuration % 60);
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>زمن الإيقاف:</label>
+          <div class="time-segment">
+            <input type="number" id="heating_off_days" name="heating_off_days" value=")=====");
+  html += String(heatingOffDuration / 86400);
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="heating_off_hours" name="heating_off_hours" value=")=====");
+  html += String((heatingOffDuration % 86400) / 3600);
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="heating_off_minutes" name="heating_off_minutes" value=")=====");
+  html += String((heatingOffDuration % 3600) / 60);
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="heating_off_seconds" name="heating_off_seconds" value=")=====");
+  html += String(heatingOffDuration % 60);
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-heating">حفظ إعدادات التدفئة</button>
+      </form>
+      <div class="timer-status">
+        <p><strong>الحالة الحالية:</strong> )=====");
+  if (currentHeatingMode == CM_DISABLED) html += F("معطل");
+  else if (currentHeatingMode == CM_MANUAL) html += F("يدوي");
+  else html += F("تلقائي");
+  html += F(R"=====(</p>
+        <p><strong>حالة Relay1:</strong> )=====");
+  html += isHeatingOn ? F("قيد التشغيل") : F("متوقف");
+  html += F(R"=====(</p>
+        <p><strong>الوقت المتبقي:</strong> )=====");
+  html += getHeatingRemainingTime();
+  html += F(R"=====(</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title"><i>❄️</i> التحكم في التبريد (Relay2)</h2>
+      <form action="/update_cooling_timer" method="post">
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="cooling_mode_disabled" name="cooling_control_mode" value="0" )=====");
+  html += (currentCoolingMode == CM_DISABLED) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="cooling_mode_disabled">معطل (حسب الحرارة فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="cooling_mode_manual" name="cooling_control_mode" value="1" )=====");
+  html += (currentCoolingMode == CM_MANUAL) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="cooling_mode_manual">يدوي (بالتايمر فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="cooling_mode_temp" name="cooling_control_mode" value="2" )=====");
+  html += (currentCoolingMode == CM_TEMPERATURE) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="cooling_mode_temp">تلقائي (حسب الحرارة والتايمر)</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="cooling_target">درجة الحرارة المطلوبة (°C):</label>
+          <input type="number" id="cooling_target" name="cooling_target" value=")=====");
+  html += String(coolingTargetTemp, 1);
+  html += F(R"=====(" step="0.1" min="-10" max="50" required>
+        </div>
+        <h3 style="font-size: var(--text-lg); margin: 0.5rem 0">إعدادات التايمر</h3>
+        <div class="form-group">
+          <label>زمن التشغيل:</label>
+          <div class="time-segment">
+            <input type="number" id="cooling_on_days" name="cooling_on_days" value=")=====");
+  html += String(coolingOnDuration / 86400);
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="cooling_on_hours" name="cooling_on_hours" value=")=====");
+  html += String((coolingOnDuration % 86400) / 3600);
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="cooling_on_minutes" name="cooling_on_minutes" value=")=====");
+  html += String((coolingOnDuration % 3600) / 60);
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="cooling_on_seconds" name="cooling_on_seconds" value=")=====");
+  html += String(coolingOnDuration % 60);
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>زمن الإيقاف:</label>
+          <div class="time-segment">
+            <input type="number" id="cooling_off_days" name="cooling_off_days" value=")=====");
+  html += String(coolingOffDuration / 86400);
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="cooling_off_hours" name="cooling_off_hours" value=")=====");
+  html += String((coolingOffDuration % 86400) / 3600);
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="cooling_off_minutes" name="cooling_off_minutes" value=")=====");
+  html += String((coolingOffDuration % 3600) / 60);
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="cooling_off_seconds" name="cooling_off_seconds" value=")=====");
+  html += String(coolingOffDuration % 60);
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-cooling">حفظ إعدادات التبريد</button>
+      </form>
+      <div class="timer-status">
+        <p><strong>الحالة الحالية:</strong> )=====");
+  if (currentCoolingMode == CM_DISABLED) html += F("معطل");
+  else if (currentCoolingMode == CM_MANUAL) html += F("يدوي");
+  else html += F("تلقائي");
+  html += F(R"=====(</p>
+        <p><strong>حالة Relay2:</strong> )=====");
+  html += isCoolingOn ? F("قيد التشغيل") : F("متوقف");
+  html += F(R"=====(</p>
+        <p><strong>الوقت المتبقي:</strong> )=====");
+  html += getCoolingRemainingTime();
+  html += F(R"=====(</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title"><i>💨</i> التحكم في التهوية (Relay3)</h2>
+      <form action="/update_ventilation_timer" method="post">
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="ventilation_mode_disabled" name="ventilation_control_mode" value="0" )=====");
+  html += (currentVentilationMode == CM_DISABLED) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="ventilation_mode_disabled">معطل (حسب الحرارة/الأمونيا فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="ventilation_mode_manual" name="ventilation_control_mode" value="1" )=====");
+  html += (currentVentilationMode == CM_MANUAL) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="ventilation_mode_manual">يدوي (بالتايمر فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="ventilation_mode_temp" name="ventilation_control_mode" value="2" )=====");
+  html += (currentVentilationMode == CM_TEMPERATURE) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="ventilation_mode_temp">تلقائي (حسب الحرارة/الأمونيا والتايمر)</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="ventilation_temp">درجة حرارة تشغيل التهوية (°C):</label>
+          <input type="number" id="ventilation_temp" name="ventilation_temp" value=")=====");
+  html += String(ventilationTempThreshold, 1);
+  html += F(R"=====(" step="0.1" min="-10" max="50" required>
+        </div>
+        <h3 style="font-size: var(--text-lg); margin: 0.5rem 0">إعدادات التايمر</h3>
+        <div class="form-group">
+          <label>زمن التشغيل:</label>
+          <div class="time-segment">
+            <input type="number" id="ventilation_on_days" name="ventilation_on_days" value=")=====");
+  html += String(ventilationOnDuration / 86400);
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="ventilation_on_hours" name="ventilation_on_hours" value=")=====");
+  html += String((ventilationOnDuration % 86400) / 3600);
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="ventilation_on_minutes" name="ventilation_on_minutes" value=")=====");
+  html += String((ventilationOnDuration % 3600) / 60);
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="ventilation_on_seconds" name="ventilation_on_seconds" value=")=====");
+  html += String(ventilationOnDuration % 60);
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>زمن الإيقاف:</label>
+          <div class="time-segment">
+            <input type="number" id="ventilation_off_days" name="ventilation_off_days" value=")=====");
+  html += String(ventilationOffDuration / 86400);
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="ventilation_off_hours" name="ventilation_off_hours" value=")=====");
+  html += String((ventilationOffDuration % 86400) / 3600);
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="ventilation_off_minutes" name="ventilation_off_minutes" value=")=====");
+  html += String((ventilationOffDuration % 3600) / 60);
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="ventilation_off_seconds" name="ventilation_off_seconds" value=")=====");
+  html += String(ventilationOffDuration % 60);
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-ventilation">حفظ إعدادات التهوية</button>
+      </form>
+      <div class="timer-status">
+        <p><strong>الحالة الحالية:</strong> )=====");
+  if (currentVentilationMode == CM_DISABLED) html += F("معطل");
+  else if (currentVentilationMode == CM_MANUAL) html += F("يدوي");
+  else html += F("تلقائي");
+  html += F(R"=====(</p>
+        <p><strong>حالة Relay3:</strong> )=====");
+  html += isVentilationOn ? F("قيد التشغيل") : F("متوقف");
+  html += F(R"=====(</p>
+        <p><strong>الوقت المتبقي:</strong> )=====");
+  html += getVentilationRemainingTime();
+  html += F(R"=====(</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title"><i>💨</i> التحكم في التهوية 2 (Relay4)</h2>
+      <form action="/update_ventilation2_timer" method="post">
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="ventilation2_mode_disabled" name="ventilation2_control_mode" value="0" )=====");
+  html += (currentVentilation2Mode == CM_DISABLED) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="ventilation2_mode_disabled">معطل (حسب الحرارة/الأمونيا فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="ventilation2_mode_manual" name="ventilation2_control_mode" value="1" )=====");
+  html += (currentVentilation2Mode == CM_MANUAL) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="ventilation2_mode_manual">يدوي (بالتايمر فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="ventilation2_mode_temp" name="ventilation2_control_mode" value="2" )=====");
+  html += (currentVentilation2Mode == CM_TEMPERATURE) ? "checked" : "";
+  html += F(R"=====(>
+            <label for="ventilation2_mode_temp">تلقائي (حسب الحرارة/الأمونيا والتايمر)</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="ventilation2_temp">درجة حرارة تشغيل التهوية (°C):</label>
+          <input type="number" id="ventilation2_temp" name="ventilation2_temp" value=")=====");
+  html += String(ventilation2TempThreshold, 1);
+  html += F(R"=====(" step="0.1" min="-10" max="50" required>
+        </div>
+        <h3 style="font-size: var(--text-lg); margin: 0.5rem 0">إعدادات التايمر</h3>
+        <div class="form-group">
+          <label>زمن التشغيل:</label>
+          <div class="time-segment">
+            <input type="number" id="ventilation2_on_days" name="ventilation2_on_days" value=")=====");
+  html += String(ventilation2OnDuration / 86400);
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="ventilation2_on_hours" name="ventilation2_on_hours" value=")=====");
+  html += String((ventilation2OnDuration % 86400) / 3600);
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="ventilation2_on_minutes" name="ventilation2_on_minutes" value=")=====");
+  html += String((ventilation2OnDuration % 3600) / 60);
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="ventilation2_on_seconds" name="ventilation2_on_seconds" value=")=====");
+  html += String(ventilation2OnDuration % 60);
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>زمن الإيقاف:</label>
+          <div class="time-segment">
+            <input type="number" id="ventilation2_off_days" name="ventilation2_off_days" value=")=====");
+  html += String(ventilation2OffDuration / 86400);
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="ventilation2_off_hours" name="ventilation2_off_hours" value=")=====");
+  html += String((ventilation2OffDuration % 86400) / 3600);
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="ventilation2_off_minutes" name="ventilation2_off_minutes" value=")=====");
+  html += String((ventilation2OffDuration % 3600) / 60);
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="ventilation2_off_seconds" name="ventilation2_off_seconds" value=")=====");
+  html += String(ventilation2OffDuration % 60);
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-ventilation">حفظ إعدادات التهوية 2</button>
+      </form>
+      <div class="timer-status">
+        <p><strong>الحالة الحالية:</strong> )=====");
+  if (currentVentilation2Mode == CM_DISABLED) html += F("معطل");
+  else if (currentVentilation2Mode == CM_MANUAL) html += F("يدوي");
+  else html += F("تلقائي");
+  html += F(R"=====(</p>
+        <p><strong>حالة Relay4:</strong> )=====");
+  html += isVentilation2On ? F("قيد التشغيل") : F("متوقف");
+  html += F(R"=====(</p>
+        <p><strong>الوقت المتبقي:</strong> )=====");
+  html += getVentilation2RemainingTime();
+  html += F(R"=====(</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title"><i>💧</i> التحكم في الرطوبة (Relay5)</h2>
+      <form action="/update_humidity_timer" method="post">
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="humidity_mode_disabled" name="humidity_control_mode" value="0" )=====");
   html += (currentHumidityMode == CM_DISABLED) ? "checked" : "";
-  html += FPSTR(R"=====(>
-              <label for="humidity_mode_disabled">معطل (حسب الرطوبة فقط)</label>
-            </div>
-            <div class="radio-option">
-              <input type="radio" id="humidity_mode_manual" name="humidity_control_mode" value="1" )=====");
+  html += F(R"=====(>
+            <label for="humidity_mode_disabled">معطل (حسب الرطوبة فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="humidity_mode_manual" name="humidity_control_mode" value="1" )=====");
   html += (currentHumidityMode == CM_MANUAL) ? "checked" : "";
-  html += FPSTR(R"=====(>
-              <label for="humidity_mode_manual">يدوي (بالتايمر فقط)</label>
-            </div>
-            <div class="radio-option">
-              <input type="radio" id="humidity_mode_temp" name="humidity_control_mode" value="2" )=====");
+  html += F(R"=====(>
+            <label for="humidity_mode_manual">يدوي (بالتايمر فقط)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="humidity_mode_temp" name="humidity_control_mode" value="2" )=====");
   html += (currentHumidityMode == CM_TEMPERATURE) ? "checked" : "";
-  html += FPSTR(R"=====(>
-              <label for="humidity_mode_temp">تلقائي (حسب الرطوبة والتايمر)</label>
-            </div>
+  html += F(R"=====(>
+            <label for="humidity_mode_temp">تلقائي (حسب الرطوبة والتايمر)</label>
           </div>
-          <div class="form-group">
-            <label for="humidity_target">القيمة المطلوبة للرطوبة (%):</label>
-            <input type="number" id="humidity_target" name="humidity_target" value=")=====");
+        </div>
+        <div class="form-group">
+          <label for="humidity_target">القيمة المطلوبة للرطوبة (%):</label>
+          <input type="number" id="humidity_target" name="humidity_target" value=")=====");
   html += String(humidityTarget, 1);
-  html += FPSTR(R"=====(" step="0.1" min="10" max="99" required>
-          </div>
-          <h3 style="font-size: var(--text-lg); margin: 0.5rem 0">إعدادات التايمر</h3>
-          <div class="form-group">
-            <label>زمن التشغيل:</label>
-            <div class="time-segment">
-              <input type="number" id="humidity_on_days" name="humidity_on_days" value=")=====");
+  html += F(R"=====(" step="0.1" min="10" max="99" required>
+        </div>
+        <h3 style="font-size: var(--text-lg); margin: 0.5rem 0">إعدادات التايمر</h3>
+        <div class="form-group">
+          <label>زمن التشغيل:</label>
+          <div class="time-segment">
+            <input type="number" id="humidity_on_days" name="humidity_on_days" value=")=====");
   html += String(humidityOnDuration / 86400);
-  html += FPSTR(R"=====(" min="0" max="30" placeholder="أيام">
-              <span>يوم</span>
-              <input type="number" id="humidity_on_hours" name="humidity_on_hours" value=")=====");
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="humidity_on_hours" name="humidity_on_hours" value=")=====");
   html += String((humidityOnDuration % 86400) / 3600);
-  html += FPSTR(R"=====(" min="0" max="23" placeholder="ساعات">
-              <span>:</span>
-              <input type="number" id="humidity_on_minutes" name="humidity_on_minutes" value=")=====");
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="humidity_on_minutes" name="humidity_on_minutes" value=")=====");
   html += String((humidityOnDuration % 3600) / 60);
-  html += FPSTR(R"=====(" min="0" max="59" placeholder="دقائق">
-              <span>:</span>
-              <input type="number" id="humidity_on_seconds" name="humidity_on_seconds" value=")=====");
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="humidity_on_seconds" name="humidity_on_seconds" value=")=====");
   html += String(humidityOnDuration % 60);
-  html += FPSTR(R"=====(" min="0" max="59" placeholder="ثواني">
-            </div>
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
           </div>
-          <div class="form-group">
-            <label>زمن الإيقاف:</label>
-            <div class="time-segment">
-              <input type="number" id="humidity_off_days" name="humidity_off_days" value=")=====");
+        </div>
+        <div class="form-group">
+          <label>زمن الإيقاف:</label>
+          <div class="time-segment">
+            <input type="number" id="humidity_off_days" name="humidity_off_days" value=")=====");
   html += String(humidityOffDuration / 86400);
-  html += FPSTR(R"=====(" min="0" max="30" placeholder="أيام">
-              <span>يوم</span>
-              <input type="number" id="humidity_off_hours" name="humidity_off_hours" value=")=====");
+  html += F(R"=====(" min="0" max="30" placeholder="أيام">
+            <span>يوم</span>
+            <input type="number" id="humidity_off_hours" name="humidity_off_hours" value=")=====");
   html += String((humidityOffDuration % 86400) / 3600);
-  html += FPSTR(R"=====(" min="0" max="23" placeholder="ساعات">
-              <span>:</span>
-              <input type="number" id="humidity_off_minutes" name="humidity_off_minutes" value=")=====");
+  html += F(R"=====(" min="0" max="23" placeholder="ساعات">
+            <span>:</span>
+            <input type="number" id="humidity_off_minutes" name="humidity_off_minutes" value=")=====");
   html += String((humidityOffDuration % 3600) / 60);
-  html += FPSTR(R"=====(" min="0" max="59" placeholder="دقائق">
-              <span>:</span>
-              <input type="number" id="humidity_off_seconds" name="humidity_off_seconds" value=")=====");
+  html += F(R"=====(" min="0" max="59" placeholder="دقائق">
+            <span>:</span>
+            <input type="number" id="humidity_off_seconds" name="humidity_off_seconds" value=")=====");
   html += String(humidityOffDuration % 60);
-  html += FPSTR(R"=====(" min="0" max="59" placeholder="ثواني">
-            </div>
+  html += F(R"=====(" min="0" max="59" placeholder="ثواني">
           </div>
-          <button type="submit" class="btn btn-ventilation">حفظ إعدادات الرطوبة</button>
-        </form>
-        <div class="timer-status">
-          <p><strong>الحالة الحالية:</strong> )=====");
+        </div>
+        <button type="submit" class="btn btn-ventilation">حفظ إعدادات الرطوبة</button>
+      </form>
+      <div class="timer-status">
+        <p><strong>الحالة الحالية:</strong> )=====");
   if (currentHumidityMode == CM_DISABLED) html += F("معطل");
   else if (currentHumidityMode == CM_MANUAL) html += F("يدوي");
   else html += F("تلقائي");
-  html += FPSTR(R"=====(</p>
-          <p><strong>حالة رطوبة Relay5:</strong> )=====");
+  html += F(R"=====(</p>
+        <p><strong>حالة رطوبة Relay5:</strong> )=====");
   html += isHumidityOn ? F("قيد التشغيل") : F("متوقف");
-  html += FPSTR(R"=====(</p>
-          <p><strong>الوقت المتبقي:</strong> )=====");
+  html += F(R"=====(</p>
+        <p><strong>الوقت المتبقي:</strong> )=====");
   html += getHumidityRemainingTime();
-  html += FPSTR(R"=====(</p>
-          <p><strong>الرطوبة المطلوبة:</strong> )=====");
+  html += F(R"=====(</p>
+        <p><strong>الرطوبة المطلوبة:</strong> )=====");
   html += String(humidityTarget, 1);
-  html += FPSTR(R"=====( %</p>
-          <p><strong>الرطوبة الحالية:</strong> )=====");
+  html += F(R"=====( %</p>
+        <p><strong>الرطوبة الحالية:</strong> )=====");
   html += String(humidity, 1);
-  html += FPSTR(R"=====( %</p>
+  html += F(R"=====( %</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title"><i>⚙️</i> إعدادات عامة</h2>
+      <form action="/update_temp_diff" method="post">
+        <div class="form-group">
+          <label for="difference">فرق درجة الحرارة للتشغيل/الإيقاف (°C):</label>
+          <input type="number" id="difference" name="difference" value=")=====");
+  html += String(tempDifference, 1);
+  html += F(R"=====(" step="0.1" min="0.1" max="10" required>
+        </div>
+        <button type="submit" class="btn">حفظ فرق الحرارة</button>
+      </form>
+
+      <form action="/update_ammonia" method="post">
+        <div class="form-group">
+          <label for="threshold">حد إنذار الأمونيا (ppm):</label>
+          <input type="number" id="threshold" name="threshold" value=")=====");
+  html += String(ammoniaThreshold, 1);
+  html += F(R"=====(" step="0.1" min="1" max="500" required>
+        </div>
+        <button type="submit" class="btn">حفظ حد الأمونيا</button>
+      </form>
+
+      <form action="/calibrate_mq135">
+        <button type="submit" class="btn">معايرة حساس الأمونيا</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title"><i>🔌</i> التحكم اليدوي في الريلات</h2>
+      <form action="/relay_auto" method="post">
+        <div class="relay-control">
+          <div class="relay-item">
+            <label>
+              <input type="checkbox" name="allow_auto_0" )=====");
+  html += relayAllowAuto[0] ? "checked" : "";
+  html += F(R"=====(>
+              <span>السماح بالتحكم التلقائي (Relay1)</span>
+            </label>
+          </div>
+          <div class="relay-item">
+            <label>
+              <input type="checkbox" name="allow_auto_1" )=====");
+  html += relayAllowAuto[1] ? "checked" : "";
+  html += F(R"=====(>
+              <span>السماح بالتحكم التلقائي (Relay2)</span>
+            </label>
+          </div>
+          <div class="relay-item">
+            <label>
+              <input type="checkbox" name="allow_auto_2" )=====");
+  html += relayAllowAuto[2] ? "checked" : "";
+  html += F(R"=====(>
+              <span>السماح بالتحكم التلقائي (Relay3)</span>
+            </label>
+          </div>
+          <div class="relay-item">
+            <label>
+              <input type="checkbox" name="allow_auto_3" )=====");
+  html += relayAllowAuto[3] ? "checked" : "";
+  html += F(R"=====(>
+              <span>السماح بالتحكم التلقائي (Relay4)</span>
+            </label>
+          </div>
+          <div class="relay-item">
+            <label>
+              <input type="checkbox" name="allow_auto_4" )=====");
+  html += relayAllowAuto[4] ? "checked" : "";
+  html += F(R"=====(>
+              <span>السماح بالتحكم التلقائي (Relay5)</span>
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn">حفظ إعدادات الريلات</button>
+      </form>
+      <div class="relay-control" style="margin-top: 20px;">
+        <div class="relay-item">
+          <a href="/control?relay=0" class="btn" style="display: block; text-align: center;">تبديل Relay1</a>
+        </div>
+        <div class="relay-item">
+          <a href="/control?relay=1" class="btn" style="display: block; text-align: center;">تبديل Relay2</a>
+        </div>
+        <div class="relay-item">
+          <a href="/control?relay=2" class="btn" style="display: block; text-align: center;">تبديل Relay3</a>
+        </div>
+        <div class="relay-item">
+          <a href="/control?relay=3" class="btn" style="display: block; text-align: center;">تبديل Relay4</a>
+        </div>
+        <div class="relay-item">
+          <a href="/control?relay=4" class="btn" style="display: block; text-align: center;">تبديل Relay5</a>
         </div>
       </div>
-  )=====");
-
-  // ... (rest of your HTML page code)
+    </div>
+  </div>
+</body>
+</html>
+)=====");
 
   server.sendHeader(F("Content-Type"), F("text/html; charset=utf-8"));
   server.send(200, F("text/html"), html);
 }
-
-// --- END PAGE changes ---
 
 void handleControl() {
   if (server.hasArg("relay")) {
@@ -1117,8 +1777,6 @@ void handleVentilation2TimerUpdate() {
   server.send(302, F("text/plain"), "");
 }
 
-// ------------- NEW: Humidity Timer Update Handler ------------
-
 void handleHumidityTimerUpdate() {
   if (server.hasArg("humidity_control_mode")) {
     currentHumidityMode = static_cast<ControlMode>(server.arg("humidity_control_mode").toInt());
@@ -1160,8 +1818,6 @@ void handleHumidityTimerUpdate() {
   server.sendHeader(F("Location"), F("/"));
   server.send(302, F("text/plain"), "");
 }
-
-// ----------- END Humidity Handler ---------------
 
 void handleHeatingTimerUpdate() {
   if (server.hasArg("heating_control_mode")) {
